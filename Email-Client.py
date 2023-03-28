@@ -3,7 +3,7 @@ import socket
 # Set up client constants
 SMTP_PORT = 25
 POP3_PORT = 110
-HOST = 'localhost'
+HOST = '15.204.245.120'
 
 
 # Define SMTP functions
@@ -25,6 +25,7 @@ def smtp_client():
 
     # Close SMTP connection
     smtp_client_socket.close()
+    print("smtp closed")
 
 
 # Define POP3 functions
@@ -47,6 +48,16 @@ def pop3_client():
     data = pop3_client_socket.recv(1024)
     print(data.decode(), end='')
 
+    # send LIST command to list messages
+    pop3_client_socket.send(b"LIST\r\n")
+    data = pop3_client_socket.recv(1024)
+    print(data.decode())
+
+    # send QUIT command to log out and close the connection
+    pop3_client_socket.send(b"QUIT\r\n")
+    data = pop3_client_socket.recv(1024)
+    print(data.decode())
+
     # Close POP3 connection
     pop3_client_socket.close()
     print('client closed')
@@ -55,6 +66,7 @@ def pop3_client():
 # Start SMTP and POP3 clients
 smtp_client() # Currently only connection code.
 pop3_client() # Currently only connection code.
+
 
 # Run Loop
     # create connection ^ ^, send email
