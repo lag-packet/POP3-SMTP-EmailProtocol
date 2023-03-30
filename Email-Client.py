@@ -1,9 +1,34 @@
 import socket
+import urllib.request
+
 
 # Set up client constants
 SMTP_PORT = 25
 POP3_PORT = 110
-HOST = '15.204.245.120'
+HOST = '15.204.245.120' #'localhost'
+USERNAME = 'client_username'
+PASSWORD = 'client_password'
+
+
+def get_public_ip_address():
+    try:
+        with urllib.request.urlopen("http://icanhazip.com") as response:
+            public_ip = response.read().decode("utf-8").strip()
+    except Exception as e:
+        public_ip = "127.0.0.1"
+    return public_ip
+
+
+def get_public_ipv4():
+    try:
+        with urllib.request.urlopen("https://api.ipify.org") as response:
+            public_ipv4 = response.read().decode("utf-8")
+    except Exception as e:
+        public_ipv4 = get_public_ip_address()
+    return public_ipv4
+
+
+CLIENT_IP = get_public_ipv4()
 
 
 # Define SMTP functions
@@ -17,7 +42,8 @@ def smtp_client():
     print(data.decode())
 
     # Send EHLO command to start SMTP handshake
-    smtp_client_socket.send(b'EHLO localhost\r\n')
+    # smtp_client_socket.send(b'EHLO localhost\r\n')
+    smtp_client_socket.send('EHLO {}\r\n'.format(CLIENT_IP).encode())
 
     # Receive response from server
     data = smtp_client_socket.recv(1024)
@@ -39,12 +65,12 @@ def pop3_client():
     print(data.decode(), end='')
 
     # Send USER command to start POP3 handshake
-    pop3_client_socket.send(b'USER username\r\n')
+    pop3_client_socket.send('USER {}\r\n'.format(USERNAME).encode())
     data = pop3_client_socket.recv(1024)
     print(data.decode(), end='')
 
     # Send PASS command to continue POP3 handshake
-    pop3_client_socket.send(b'PASS password\r\n')
+    pop3_client_socket.send('PASS {}\r\n'.format(PASSWORD).encode())
     data = pop3_client_socket.recv(1024)
     print(data.decode(), end='')
 

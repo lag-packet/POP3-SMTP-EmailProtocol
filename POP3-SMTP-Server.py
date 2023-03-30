@@ -4,7 +4,7 @@ import threading
 # Set up server constants
 SMTP_PORT = 25
 POP3_PORT = 110
-HOST = 'localhost'
+HOST = 'localhost' #'15.204.245.120'
 
 
 # Define SMTP functions
@@ -22,18 +22,33 @@ def smtp_server():
         print('SMTP client connected from {}'.format(address))
 
         # Send initial SMTP greeting
-        client_socket.send(b'220 localhost ESMTP server ready\r\n')
+        client_socket.send('220 {} ESMTP server ready \r\n'.format(HOST).encode())
 
-        # Start SMTP handshake
-        data = client_socket.recv(1024)
-        if data.startswith(b'EHLO'):
-            client_socket.send('250-localhost greets {}\r\n'.format(data.split()[1]).encode())
-            client_socket.send(b'250-PIPELINING\r\n')
-            client_socket.send(b'250-ENHANCEDSTATUSCODES\r\n')
-            client_socket.send(b'250 8BITMIME\r\n')
-        else:
-            client_socket.send(b'500 Invalid command\r\n')
-            client_socket.close()
+        # SMTP command processing loop
+        while True:
+            try:
+                data = client_socket.recv(1024).strip()
+                if not data:
+                    break
+
+                # process SMTP commands
+                if data.startswith(b'EHLO'):
+                    print(f'DEBUG smtp command1: {data.split()[1].decode()}')
+                    client_socket.send('250-{} greets {}\r\n'.format(HOST, address[0]).encode())
+                    #client_socket.send(b'250-PIPELINING\r\n')
+                    #client_socket.send(b'250-ENHANCEDSTATUSCODES\r\n')
+                    #client_socket.send(b'250 8BITMIME\r\n')
+                elif data.startswith(b'QUIT'):
+                    # handle QUIT command
+                    client_socket.send(b'221 Bye\r\n')
+                    client_socket.close()
+                    break
+                else:
+                    client_socket.send(b'500 Invalid command\r\n')
+            except (ConnectionResetError, ConnectionAbortedError) as e:
+                print(f"Connection error: {e}")
+                client_socket.close()
+                break
 
 
 # Define POP3 functions
@@ -55,33 +70,38 @@ def pop3_server():
 
         # POP3 command processing loop
         while True:
-            data = client_socket.recv(1024).strip()
-            if not data:
-                break
+            try:
+                data = client_socket.recv(1024).strip()
+                if not data:
+                    break
 
-            # process POP3 commands
-            if data.startswith(b'USER'):
-                # USER command
-                print('User processed')
-                client_socket.send(b'+OK User accepted\r\n')
-            elif data.startswith(b'PASS'):
-                # PASS command
-                print('Password processed')
-                client_socket.send(b'+OK Pass accepted\r\n')
-            elif data.startswith(b'LIST'):
-                # LIST command
-                print(
-                    'List command processed, sending that there is 1 message of size 100 bytes in inbox')
-                client_socket.send(b'+OK 1 messages:\r\n')
-                client_socket.send(b'1 100\r\n')
-                client_socket.send(b'.\r\n')
-            elif data.startswith(b'QUIT'):
-                # handle QUIT command
-                client_socket.send(b'+OK Bye\r\n')
+                # process POP3 commands
+                if data.startswith(b'USER'):
+                    # USER command
+                    print(f'User processed:{data.split()[1].decode()}')
+                    client_socket.send(b'+OK User accepted\r\n')
+                elif data.startswith(b'PASS'):
+                    # PASS command
+                    print(f'Password processed:{data.split()[1].decode()}')
+                    client_socket.send(b'+OK Pass accepted\r\n')
+                elif data.startswith(b'LIST'):
+                    # LIST command
+                    print(
+                        'List command processed, sending that there is 1 message of size 100 bytes in inbox')
+                    client_socket.send(b'+OK 1 messages:\r\n')
+                    client_socket.send(b'1 100\r\n')
+                    client_socket.send(b'.\r\n')
+                elif data.startswith(b'QUIT'):
+                    # handle QUIT command
+                    client_socket.send(b'+OK Bye\r\n')
+                    client_socket.close()
+                    break
+                else:
+                    client_socket.send(b'-ERR Unknown command\r\n')
+            except (ConnectionResetError, ConnectionAbortedError) as e:
+                print(f"Connection error: {e}")
                 client_socket.close()
                 break
-            else:
-                client_socket.send(b'-ERR Unknown command\r\n')
 
 
 # Start SMTP and POP3 servers in separate threads
