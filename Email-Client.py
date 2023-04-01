@@ -5,7 +5,8 @@ import urllib.request
 # Set up client constants
 SMTP_PORT = 25
 POP3_PORT = 110
-HOST = '15.204.245.120' #'localhost'
+HOST = 'localhost'  # '15.204.245.120'
+CLIENT_DOMAIN = '348.edu'
 USERNAME = 'client_username'
 PASSWORD = 'client_password'
 
@@ -32,7 +33,7 @@ CLIENT_IP = get_public_ipv4()
 
 
 # Define SMTP functions
-def smtp_client():
+def smtp_client(receiver, subject, message):
     # Connect to SMTP server socket
     smtp_client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     smtp_client_socket.connect((HOST, SMTP_PORT))
@@ -42,10 +43,31 @@ def smtp_client():
     print(data.decode())
 
     # Send EHLO command to start SMTP handshake
-    # smtp_client_socket.send(b'EHLO localhost\r\n')
-    smtp_client_socket.send('EHLO {}\r\n'.format(CLIENT_IP).encode())
+    smtp_client_socket.send('HELO {}\r\n'.format(CLIENT_DOMAIN).encode())
+    data = smtp_client_socket.recv(1024)
+    print(data.decode())
 
-    # Receive response from server
+    # Send MAIL FROM command to SMTP Server
+    smtp_client_socket.send('MAIL FROM: <{}>\r\n'.format(USERNAME).encode())
+    data = smtp_client_socket.recv(1024)
+    print(data.decode())
+
+    # Send RCPT TO command to SMTP server
+    smtp_client_socket.send('RCPT TO: <{}>\r\n'.format(receiver).encode())
+    data = smtp_client_socket.recv(1024)
+    print(data.decode())
+
+    # Send DATA command to SMTP server
+    smtp_client_socket.send(b'DATA\r\n')
+    data = smtp_client_socket.recv(1024)
+    print(data.decode())
+
+    # Send email message
+    send_message = "Subject: {}\r\n\r\n{}".format(subject, message)
+    smtp_client_socket.send(send_message.encode())
+
+    # Send end of message
+    smtp_client_socket.send(b'\r\n.\r\n')
     data = smtp_client_socket.recv(1024)
     print(data.decode())
 
@@ -89,10 +111,20 @@ def pop3_client():
     print('client closed')
 
 
-# Start SMTP and POP3 clients
-smtp_client() # Currently only connection code.
-pop3_client() # Currently only connection code.
+authenticate = False
+while True:
+    if not authenticate:
+        choice = input("Enter User:")
+        USERNAME = choice + '@' + CLIENT_DOMAIN
+        choice = input("Enter Password:")
+        PASSWORD = choice
+        # authenticate METHOD here TODO
+        authenticate = True
+        print(f"Welcome {USERNAME}")
 
+    choice = input("Enter 'send' or 'mail':")
+    if choice == 'send':
+        smtp_client('test@348.edu', 'yo yo', 'this is a test message!')
 
 # Run Loop
     # create connection ^ ^, send email

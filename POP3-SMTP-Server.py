@@ -4,7 +4,7 @@ import threading
 # Set up server constants
 SMTP_PORT = 25
 POP3_PORT = 110
-HOST = 'localhost' #'15.204.245.120'
+HOST = 'localhost'  # '15.204.245.120'
 
 
 # Define SMTP functions
@@ -27,20 +27,36 @@ def smtp_server():
         # SMTP command processing loop
         while True:
             try:
-                data = client_socket.recv(1024).strip()
+                data = client_socket.recv(1024)
                 if not data:
                     break
 
                 # process SMTP commands
-                if data.startswith(b'EHLO'):
-                    print(f'DEBUG smtp command1: {data.split()[1].decode()}')
-                    client_socket.send('250-{} greets {}\r\n'.format(HOST, address[0]).encode())
-                    #client_socket.send(b'250-PIPELINING\r\n')
-                    #client_socket.send(b'250-ENHANCEDSTATUSCODES\r\n')
-                    #client_socket.send(b'250 8BITMIME\r\n')
+                if data.startswith(b'HELO'):
+                    # print(f'DEBUG smtp command1: {data.split()[1].decode()}')
+                    print(data.decode())
+                    client_socket.send(
+                        '250 Hello {}, pleased to meet you\r\n'.format(data.split()[1].decode()).encode())
+                elif data.startswith(b'MAIL FROM'):
+                    print(data.decode())
+                    client_socket.send(
+                        '250 {} ... Sender ok\r\n'.format(data.split()[1].decode()).encode()
+                    )
+                elif data.startswith(b'RCPT TO:'):
+                    print(data.decode())
+                    client_socket.send(
+                        '250 {} ... Recipient ok\r\n'.format(data.split()[1].decode()).encode()
+                    )
+                elif data.startswith(b'DATA'):
+                    print(data.decode())
+                    client_socket.send(b'354 Enter mail, end with "." on a line by itself\r\n')
+                elif data.startswith(b'Subject:'):
+                    print(data.decode())
+                    client_socket.send('C:{}'.format(data.decode()).encode())
+                elif data.startswith(b'.\r\n'):
+                    client_socket.send(b'250 Message accepted for delivery\r\n')
                 elif data.startswith(b'QUIT'):
-                    # handle QUIT command
-                    client_socket.send(b'221 Bye\r\n')
+                    client_socket.send('221 {} closing connection\r\n'.format(HOST).encode())
                     client_socket.close()
                     break
                 else:
@@ -71,7 +87,7 @@ def pop3_server():
         # POP3 command processing loop
         while True:
             try:
-                data = client_socket.recv(1024).strip()
+                data = client_socket.recv(1024)
                 if not data:
                     break
 
