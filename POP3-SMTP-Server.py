@@ -50,10 +50,19 @@ def smtp_server():
                 elif data.startswith(b'DATA'):
                     print(data.decode())
                     client_socket.send(b'354 Enter mail, end with "." on a line by itself\r\n')
-                elif data.startswith(b'Subject:'):
-                    print(data.decode())
-                    client_socket.send('C:{}'.format(data.decode()).encode())
-                elif data.startswith(b'.\r\n'):
+
+                    # Capture the whole message
+                    message_data = bytearray()
+                    while True:
+                        chunk = client_socket.recv(1024)
+                        if not chunk:
+                            break
+                        message_data.extend(chunk)
+                        if message_data.endswith(b'\r\n.\r\n'):
+                            break
+                    # print("DEBUG")
+                    print(message_data.decode())
+
                     client_socket.send(b'250 Message accepted for delivery\r\n')
                 elif data.startswith(b'QUIT'):
                     client_socket.send('221 {} closing connection\r\n'.format(HOST).encode())

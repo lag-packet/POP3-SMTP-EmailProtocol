@@ -71,6 +71,11 @@ def smtp_client(receiver, subject, message):
     data = smtp_client_socket.recv(1024)
     print(data.decode())
 
+    # Send QUIT command
+    smtp_client_socket.send(b'QUIT\r\n');
+    data = smtp_client_socket.recv(1024)
+    print(data.decode())
+
     # Close SMTP connection
     smtp_client_socket.close()
     print("smtp closed")
