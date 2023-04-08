@@ -235,6 +235,9 @@ while not done:
     y_n = input('Do you wish to send (Y/N): ')
     if y_n.lower() == 'y':
         receiver = input('Enter receiver: ')
+        if '@' not in receiver:
+            print("please enter a valid email for receiver!")
+            continue
         subject = input('Enter subject: ')
         message = input('Enter message: ')
         smtp_client(username_input, receiver, subject, message)

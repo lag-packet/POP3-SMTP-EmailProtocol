@@ -1,10 +1,32 @@
 import socket
 import threading
+import re
+import os
 
 # Set up server constants
 SMTP_PORT = 25
 POP3_PORT = 110
 HOST = 'localhost'  # '15.204.245.120'
+
+
+def make_email_file(sender, recv, subject, message):
+    print(f'*DEBUG* recv: {recv}')
+    user_folder_path = f'{recv}'
+    print(f'*DEBUG* user folder path: {user_folder_path}')
+
+    if os.path.isdir(user_folder_path):
+        print(f'*DEBUG* user folder exists')
+    else:
+        print(f'*DEBUG* created user folder!')
+        os.mkdir(user_folder_path)
+
+    email_file_path = f"{recv}/{subject}.txt"
+    print(f'*DEBUG* email file {email_file_path}')
+    print(f'*DEBUG* subject: {subject}')
+    with open(email_file_path, 'w') as file:
+        file.write('From:' + sender + '\n')
+        file.write(message)
+    print(f'*DEBUG* email filed created!')
 
 
 # Define SMTP functions
@@ -24,8 +46,11 @@ def smtp_server():
         # Send initial SMTP greeting
         client_socket.send('220 {} ESMTP server ready \r\n'.format(HOST).encode())
 
+        mail_from = ''
+        recpt_to = ''
         # SMTP command processing loop
         while True:
+
             try:
                 data = client_socket.recv(1024)
                 if not data:
@@ -39,11 +64,21 @@ def smtp_server():
                         '250 Hello {}, pleased to meet you\r\n'.format(data.split()[1].decode()).encode())
                 elif data.startswith(b'MAIL FROM'):
                     print(data.decode())
+                    mail_from_match = re.search(r'<([^@]+)', data.decode())
+                    if mail_from_match:
+                        mail_from = mail_from_match.group(1)
+                    print(f'*DEBUG* mail from: {mail_from}')
+
                     client_socket.send(
                         '250 {} ... Sender ok\r\n'.format(data.split()[1].decode()).encode()
                     )
                 elif data.startswith(b'RCPT TO:'):
                     print(data.decode())
+                    recpt_to_match = re.search(r'<([^@]+)', data.decode())
+                    if recpt_to_match:
+                        recpt_to = recpt_to_match.group(1)
+                    print(f'*DEBUG* recpt to: {recpt_to}')
+
                     client_socket.send(
                         '250 {} ... Recipient ok\r\n'.format(data.split()[1].decode()).encode()
                     )
@@ -61,7 +96,18 @@ def smtp_server():
                         if message_data.endswith(b'\r\n.\r\n'):
                             break
                     # print("DEBUG")
+                    mail_msg = message_data.decode()
+                    mail_msg = "\r\n".join(mail_msg.rsplit("\r\n.\r\n", 1))
+                    subject_match = re.search(r'Subject: (.*?)\r\n\r\n', mail_msg, re.DOTALL)
+                    if subject_match:
+                        subject_text = subject_match.group(1)
+                        print(f"Subject text: {subject_text}")
+                    else:
+                        print("Subject not found")
                     print(message_data.decode())
+
+                    # Makes the mail file in the recp. mail folder
+                    make_email_file(mail_from, recpt_to, subject_text, mail_msg)
 
                     client_socket.send(b'250 Message accepted for delivery\r\n')
                 elif data.startswith(b'QUIT'):
