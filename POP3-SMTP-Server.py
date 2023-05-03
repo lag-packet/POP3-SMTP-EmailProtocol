@@ -2,11 +2,39 @@ import socket
 import threading
 import re
 import os
+import datetime
+import mysql.connector
 
 # Set up server constants
 SMTP_PORT = 25
 POP3_PORT = 110
 HOST = 'localhost'  # '15.204.245.120'
+MYSQL_HOST = '18.221.218.0'
+
+
+# Make connection to DB
+def create_db_connection():
+    return mysql.connector.connect(
+        host="18.221.218.0",
+        user="emailClient",
+        password="381Password!",
+        database="emailDatabase"
+    )
+
+
+# Get specified user ID based on email from the DB.
+def get_user_id(email):
+    connection = create_db_connection()
+    cursor = connection.cursor()
+
+    query = "SELECT id FROM users WHERE username = %s"
+    cursor.execute(query, (email,))
+
+    result = cursor.fetchone()
+    cursor.close()
+    connection.close()
+
+    return result[0] if result else None
 
 
 def make_email_file(sender, recv, subject, message):
@@ -29,7 +57,37 @@ def make_email_file(sender, recv, subject, message):
     print(f'*DEBUG* email filed created!')
 
 
-# Define SMTP functions
+# Insert email to db for respective user
+def insert_email_to_db(sender, recv, subject, message):
+    # Get recipient's user_id
+    recipient_id = get_user_id(recv + '@email.com')
+    print(f'rec id {recipient_id}')
+
+    if recipient_id is None:
+        print("ERR - the recipient does not exist")
+        # break from here? depends on your code ^^^^
+        return
+
+    # Current date and time
+    current_date = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    connection = create_db_connection()
+    cursor = connection.cursor()
+
+    query = """
+    INSERT INTO emails (user_id, subject, sender, recipient, date, body)
+    VALUES (%s, %s, %s, %s, %s, %s);
+    """
+
+    cursor.execute(query, (recipient_id, subject, sender + '@email.com',
+                           recv + '@email.com', current_date, message))
+    connection.commit()
+    cursor.close()
+    connection.close()
+    print("Email has been sent successfully.")
+
+
+# Define SMTP SERVER
 def smtp_server():
     # Create SMTP server socket
     smtp_server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -107,7 +165,14 @@ def smtp_server():
                     print(message_data.decode())
 
                     # Makes the mail file in the recp. mail folder
-                    make_email_file(mail_from, recpt_to, subject_text, mail_msg)
+                    # make_email_file(mail_from, recpt_to, subject_text, mail_msg)
+                    # insert_email_to_db(mail_from, recpt_to, subject_text, mail_msg)
+
+                    # Remove the "Subject:" line and any text following it
+                    mail_msg = re.sub(r'Subject:.*?\r\n', '', mail_msg, flags=re.DOTALL)
+                    mail_msg = mail_msg.replace('\r\n', '').replace('\n', '')
+
+                    insert_email_to_db(mail_from, recpt_to, subject_text, mail_msg)
 
                     client_socket.send(b'250 Message accepted for delivery\r\n')
                 elif data.startswith(b'QUIT'):
@@ -122,7 +187,7 @@ def smtp_server():
                 break
 
 
-# Define POP3 functions
+# Define POP3 SERVER
 def pop3_server():
     # create POP3 server socket
     pop3_server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

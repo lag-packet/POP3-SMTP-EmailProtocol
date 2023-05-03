@@ -232,8 +232,8 @@ while not done:
         print(f'Hello {username_input}!')
 
     user_inputted = True
-    y_n = input('Do you wish to send (Y/N): ')
-    if y_n.lower() == 'y':
+    s_r = input('Send(s) or Read email(r) or Quit(any input): ')
+    if s_r.lower() == 's':
         receiver = input('Enter receiver: ')
         if '@' not in receiver:
             print("please enter a valid email for receiver!")
@@ -241,6 +241,10 @@ while not done:
         subject = input('Enter subject: ')
         message = input('Enter message: ')
         smtp_client(username_input, receiver, subject, message)
+    elif s_r.lower() == 'r':
+        print('Bye!')
+        done = True
+        break
     else:
         print('Bye!')
         done = True
